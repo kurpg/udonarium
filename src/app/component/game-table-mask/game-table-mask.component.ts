@@ -10,10 +10,12 @@ import {
   OnChanges,
   OnDestroy
 } from '@angular/core';
+import { Card } from '@udonarium/card';
 import { ImageFile } from '@udonarium/core/file-storage/image-file';
 import { EventSystem } from '@udonarium/core/system';
 import { MathUtil } from '@udonarium/core/system/util/math-util';
 import { GameTableMask } from '@udonarium/game-table-mask';
+import { LockeAreaType, LockeCardType } from '@udonarium/locke-type';
 import { PresetSound, SoundEffect } from '@udonarium/sound-effect';
 import { GameCharacterSheetComponent } from 'component/game-character-sheet/game-character-sheet.component';
 import { InputHandler } from 'directive/input-handler';
@@ -23,6 +25,7 @@ import { CoordinateService } from 'service/coordinate.service';
 import { PanelOption, PanelService } from 'service/panel.service';
 import { PointerDeviceService } from 'service/pointer-device.service';
 import { TabletopActionService } from 'service/tabletop-action.service';
+import { TabletopService } from 'service/tabletop.service';
 import { SelectionState, TabletopSelectionService } from 'service/tabletop-selection.service';
 
 @Component({
@@ -55,6 +58,7 @@ export class GameTableMaskComponent implements OnChanges, OnDestroy, AfterViewIn
 
   constructor(
     private ngZone: NgZone,
+    private tabletopService: TabletopService,
     private tabletopActionService: TabletopActionService,
     private contextMenuService: ContextMenuService,
     private elementRef: ElementRef<HTMLElement>,
@@ -232,7 +236,111 @@ export class GameTableMaskComponent implements OnChanges, OnDestroy, AfterViewIn
     });
     actions.push(ContextMenuSeparator);
     actions.push({ name: 'オブジェクト作成', action: null, subActions: this.tabletopActionService.makeDefaultContextMenuActions(objectPosition) });
+    actions.push(ContextMenuSeparator);
+    actions.push({
+      name: '場所種別割当', action: null, subActions: [
+        {
+          name: '捨て札置き場', action: () => {
+            this.gameTableMask.setLockeAreaType(LockeAreaType.COMBAT_TRASH);
+          }
+        },
+        {
+          name: '宇宙/秘密基地', action: () => {
+            this.gameTableMask.setLockeAreaType(LockeAreaType.SPACE);
+          }
+        },
+        {
+          name: '割り当て解除', action: () => {
+            this.gameTableMask.setLockeAreaType(LockeAreaType.NONE);
+          }
+        }
+      ]
+    });
+    actions.push(ContextMenuSeparator);
+    actions.push({
+      name: '捨て札を集める(捨て札置き場)',
+      action:
+        this.gameTableMask.locke_area_type == LockeAreaType.COMBAT_TRASH ?
+          (
+            () => {
+              this.gatherTrash(objectPosition);
+              SoundEffect.play(PresetSound.cardPut);
+            }
+          ) : null
+    });
+    actions.push({
+      name: '配置をすこしずらす(宇宙/秘密基地)',
+      action:
+        this.gameTableMask.locke_area_type == LockeAreaType.SPACE ?
+          (
+            () => {
+              this.randomizeItemPositionOnThis();
+              SoundEffect.play(PresetSound.cardPut);
+            }
+          ) : null
+    });
     return actions;
+  }
+
+  isOnThis(card: Card): boolean {
+    // table maskの上にカードの中心位置が含まれるか判定
+    let gridSize = this.gridSize;
+
+    // マスクの範囲計算
+    let mask = this.gameTableMask;
+    let mask_width = mask.width * this.gridSize;
+    let mask_height = mask.height * gridSize;
+
+    let xmin = mask.location.x;
+    let xmax = mask.location.x + mask_width;
+
+    let ymin = mask.location.y;
+    let ymax = mask.location.y + mask_height;
+
+    // card.size    : 設定のところのサイズ
+    // aspect_ratio : アスペクト比。 height/width
+    let scale = gridSize * card.size;
+    let aspect_ratio = 1.5;  // height/width
+
+    // カード中心位置
+    let x = card.location.x + scale / 2;
+    let y = card.location.y + scale / 2 * aspect_ratio;
+    return (
+      (xmin < x) && (x < xmax) && (ymin < y) && (y < ymax)
+    );
+  }
+
+  randomizeItemPositionOnThis() {
+    let gridSize = this.gridSize;
+    let move = function (card: Card) {
+      let moveScale = gridSize / 5;
+      let dx = moveScale * (1 - 2 * Math.random());
+      let dy = moveScale * (1 - 2 * Math.random());
+
+      card.location.x = card.location.x + dx;
+      card.location.y = card.location.y + dy;
+      return card;
+    }
+    let rotate = function (card: Card) {
+      let toRotate = Math.random();
+      if (toRotate >= 0.5) card.rotate += 180;
+      return card;
+    }
+
+    this.tabletopService.cards
+      .filter(card => card.locke_card_type == LockeCardType.ITEM)
+      .filter(card => this.isOnThis(card))
+      .map(move)
+      .map(rotate)
+      .forEach(card => card.update());
+  }
+
+  gatherTrash(position) {
+    if (this.gameTableMask.locke_area_type != LockeAreaType.COMBAT_TRASH) return;
+    let trash = this.tabletopService.cards
+      .filter(card => card.locke_card_type == LockeCardType.COMBAT)
+      .filter(card => this.isOnThis(card));
+    this.tabletopActionService.createStackFromCards(position, trash, 'コンバットカード');
   }
 
   private showDetail(gameObject: GameTableMask) {

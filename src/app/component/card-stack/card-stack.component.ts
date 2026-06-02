@@ -17,6 +17,7 @@ import { ImageFile } from '@udonarium/core/file-storage/image-file';
 import { ObjectStore } from '@udonarium/core/synchronize-object/object-store';
 import { EventSystem, Network } from '@udonarium/core/system';
 import { MathUtil } from '@udonarium/core/system/util/math-util';
+import { LockeCardType } from '@udonarium/locke-type';
 import { PeerCursor } from '@udonarium/peer-cursor';
 import { PresetSound, SoundEffect } from '@udonarium/sound-effect';
 import { CardStackListComponent } from 'component/card-stack-list/card-stack-list.component';
@@ -238,6 +239,28 @@ export class CardStackComponent implements OnChanges, AfterViewInit, OnDestroy {
     return card;
   }
 
+  private drawSeven(): Card[] {
+    if (this.cardStack.cards.length == 0) return;
+
+    let cardStack = CardStack.create('手札');
+    cardStack.location.x = this.cardStack.location.x + 200 - (Math.random() * 100);
+    cardStack.location.y = this.cardStack.location.y + 50 - (Math.random() * 100);
+    cardStack.posZ = this.cardStack.posZ;
+    cardStack.zindex = this.cardStack.zindex + 1;
+
+    let cards = this.cardStack.cards;
+    for (let i = 0; i < 7; i++) {
+      let card = this.cardStack.drawCard();
+      cardStack.putOnBottom(card);
+      if (this.cardStack.cards.length == 0) {
+        this.cardStack.setLocation('graveyard');
+        this.cardStack.destroy();
+        break;
+      }
+    }
+    return cards;
+  }
+
   private breakStack() {
     let cards = this.cardStack.drawCardAll().reverse();
     for (let card of cards) {
@@ -373,6 +396,13 @@ export class CardStackComponent implements OnChanges, AfterViewInit, OnDestroy {
         }
       }
     });
+    actions.push({
+      name: '７枚引く', action: () => {
+        if (this.drawSeven() != null) {
+          SoundEffect.play(PresetSound.cardDraw);
+        }
+      }
+    });
     actions.push(ContextMenuSeparator);
     actions.push({
       name: '一番上を表にする', action: () => {
@@ -444,6 +474,23 @@ export class CardStackComponent implements OnChanges, AfterViewInit, OnDestroy {
         cloneObject.toTopmost();
         SoundEffect.play(PresetSound.cardPut);
       }
+    });
+    actions.push(ContextMenuSeparator);
+    actions.push({
+      name: 'カード種別割当', action: null, subActions: [
+        {
+          name: 'コンバットカード',
+          action: () => {
+            this.cardStack.setLockeCardType(LockeCardType.COMBAT);
+          }
+        },
+        {
+          name: 'アイテム',
+          action: () => {
+            this.cardStack.setLockeCardType(LockeCardType.ITEM);
+          }
+        }
+      ]
     });
     actions.push({
       name: '山札を削除する', action: () => {

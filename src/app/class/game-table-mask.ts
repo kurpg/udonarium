@@ -1,10 +1,12 @@
 import { SyncObject, SyncVar } from './core/synchronize-object/decorator';
 import { DataElement } from './data-element';
+import { LockeAreaType } from './locke-type';
 import { TabletopObject } from './tabletop-object';
 
 @SyncObject('table-mask')
 export class GameTableMask extends TabletopObject {
   @SyncVar() isLock: boolean = false;
+  @SyncVar() locke_area_type: LockeAreaType = LockeAreaType.NONE;
 
   get name(): string { return this.getCommonValue('name', ''); }
   get width(): number { return this.getCommonValue('width', 1); }
@@ -13,6 +15,10 @@ export class GameTableMask extends TabletopObject {
     let element = this.getElement('opacity', this.commonDataElement);
     let num = element ? <number>element.currentValue / <number>element.value : 1;
     return Number.isNaN(num) ? 1 : num;
+  }
+
+  setLockeAreaType(locke_area_type: LockeAreaType) {
+    this.locke_area_type = locke_area_type;
   }
 
   static create(name: string, width: number, height: number, opacity: number, identifier?: string): GameTableMask {
@@ -24,6 +30,7 @@ export class GameTableMask extends TabletopObject {
       object = new GameTableMask();
     }
     object.createDataElements();
+    object.setLockeAreaType(LockeAreaType.NONE);
 
     object.commonDataElement.appendChild(DataElement.create('name', name, {}, 'name_' + object.identifier));
     object.commonDataElement.appendChild(DataElement.create('width', width, {}, 'width_' + object.identifier));
