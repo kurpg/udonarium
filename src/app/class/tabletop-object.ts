@@ -81,6 +81,11 @@ export class TabletopObject extends ObjectNode {
     return element;
   }
 
+  // 超人ロックのイニシア機能用に外部から名前指定でDataElementを取得するためのpublicラッパー
+  getElementByName(name: string, from: DataElement = this.rootDataElement): DataElement {
+    return this.getElement(name, from);
+  }
+
   protected getCommonValue<T extends string | number>(elementName: string, defaultValue: T): T {
     let element = this.getElement(elementName, this.commonDataElement);
     if (!element) return defaultValue;

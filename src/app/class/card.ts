@@ -2,6 +2,7 @@ import { ImageFile } from './core/file-storage/image-file';
 import { SyncObject, SyncVar } from './core/synchronize-object/decorator';
 import { Network } from './core/system';
 import { DataElement } from './data-element';
+import { LockeCardType } from './locke-type';
 import { PeerCursor } from './peer-cursor';
 import { TabletopObject } from './tabletop-object';
 import { moveToBackmost, moveToTopmost } from './tabletop-object-util';
@@ -14,6 +15,7 @@ export enum CardState {
 @SyncObject('card')
 export class Card extends TabletopObject {
   @SyncVar() state: CardState = CardState.FRONT;
+  @SyncVar() locke_card_type: LockeCardType = LockeCardType.NONE;
   @SyncVar() rotate: number = 0;
   @SyncVar() owner: string = '';
   @SyncVar() zindex: number = 0;
@@ -38,6 +40,10 @@ export class Card extends TabletopObject {
   get isHand(): boolean { return Network.peer.userId === this.owner; }
   get isFront(): boolean { return this.state === CardState.FRONT; }
   get isVisible(): boolean { return this.isHand || this.isFront; }
+
+  setLockeCardType(locke_card_type: LockeCardType) {
+    this.locke_card_type = locke_card_type;
+  }
 
   faceUp() {
     this.state = CardState.FRONT;
@@ -66,6 +72,7 @@ export class Card extends TabletopObject {
       object = new Card();
     }
     object.createDataElements();
+    object.setLockeCardType(LockeCardType.NONE);
 
     object.commonDataElement.appendChild(DataElement.create('name', name, {}, 'name_' + object.identifier));
     object.commonDataElement.appendChild(DataElement.create('size', size, {}, 'size_' + object.identifier));

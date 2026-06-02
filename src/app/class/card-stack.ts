@@ -3,6 +3,7 @@ import { ImageFile } from './core/file-storage/image-file';
 import { SyncObject, SyncVar } from './core/synchronize-object/decorator';
 import { ObjectNode } from './core/synchronize-object/object-node';
 import { DataElement } from './data-element';
+import { LockeCardType } from './locke-type';
 import { PeerCursor } from './peer-cursor';
 import { TabletopObject } from './tabletop-object';
 import { moveToBackmost, moveToTopmost } from './tabletop-object-util';
@@ -135,6 +136,11 @@ export class CardStack extends TabletopObject {
 
   toBackmost() {
     moveToBackmost(this, ['card']);
+  }
+
+  setLockeCardType(locke_card_type: LockeCardType) {
+    let cards = this.cards;
+    for (let card of cards) card.setLockeCardType(locke_card_type);
   }
 
   // override

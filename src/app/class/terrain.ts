@@ -1,6 +1,7 @@
 import { ImageFile } from './core/file-storage/image-file';
 import { SyncObject, SyncVar } from './core/synchronize-object/decorator';
 import { DataElement } from './data-element';
+import { LockeAreaType } from './locke-type';
 import { TabletopObject } from './tabletop-object';
 
 export enum TerrainViewState {
@@ -15,6 +16,7 @@ export class Terrain extends TabletopObject {
   @SyncVar() isLocked: boolean = false;
   @SyncVar() mode: TerrainViewState = TerrainViewState.ALL;
   @SyncVar() rotate: number = 0;
+  @SyncVar() locke_area_type: LockeAreaType = LockeAreaType.NONE;
 
   get width(): number { return this.getCommonValue('width', 1); }
   set width(width: number) { this.setCommonValue('width', width); }
@@ -31,6 +33,10 @@ export class Terrain extends TabletopObject {
   get hasWall(): boolean { return this.mode & TerrainViewState.WALL ? true : false; }
   get hasFloor(): boolean { return this.mode & TerrainViewState.FLOOR ? true : false; }
 
+  setLockeAreaType(locke_area_type: LockeAreaType) {
+    this.locke_area_type = locke_area_type;
+  }
+
   static create(name: string, width: number, depth: number, height: number, wall: string, floor: string, identifier?: string): Terrain {
     let object: Terrain = null;
 
@@ -40,6 +46,7 @@ export class Terrain extends TabletopObject {
       object = new Terrain();
     }
     object.createDataElements();
+    object.setLockeAreaType(LockeAreaType.NONE);
 
     object.commonDataElement.appendChild(DataElement.create('name', name, {}, 'name_' + object.identifier));
     object.commonDataElement.appendChild(DataElement.create('width', width, {}, 'width_' + object.identifier));

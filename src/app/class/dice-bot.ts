@@ -11,6 +11,10 @@ import { EventSystem } from './core/system';
 import { PromiseQueue } from './core/system/util/promise-queue';
 import { StringUtil } from './core/system/util/string-util';
 
+import LockeDice from './LockeDice';
+// 追加カスタムダイスは下記追記
+// import *** from './***';
+
 interface DiceRollResult {
   id: string;
   result: string;
@@ -23,6 +27,27 @@ let queue: PromiseQueue = initializeDiceBotQueue();
 @SyncObject('dice-bot')
 export class DiceBot extends GameObject {
   static diceBotInfos: GameSystemInfo[] = [];
+
+  // カスタムダイスボットを diceBotInfos に登録するための GameSystemInfo を生成する
+  static getCustomGameSystemInfo(system: GameSystemClass, locale: string): GameSystemInfo {
+    const gameSystemInfo: GameSystemInfo = {
+      id: system.ID,
+      name: system.NAME,
+      className: system.ID,
+      sortKey: system.SORT_KEY,
+      locale: locale,
+      superClassName: 'Base',
+    };
+    return gameSystemInfo;
+  }
+
+  // 追加カスタムダイスのクラスを gameType から解決する
+  static loadCustomGameSystem(gameType: string): any {
+    if (gameType == 'Locke') { return LockeDice; }
+    // 追加カスタムダイスは下記追記
+    // if( gameType == '***') return ***;
+    return null;
+  }
 
   // GameObject Lifecycle
   onStoreAdded() {
@@ -124,6 +149,10 @@ export class DiceBot extends GameObject {
 
   static async loadGameSystemAsync(gameType: string): Promise<GameSystemClass> {
     return await queue.add(() => {
+      const customSystem = this.loadCustomGameSystem(gameType);
+      if (customSystem) {
+        return customSystem;
+      }
       const id = this.diceBotInfos.some(info => info.id === gameType) ? gameType : 'DiceBot';
       try {
         return loader.getGameSystemClass(id);
@@ -141,7 +170,10 @@ function initializeDiceBotQueue(): PromiseQueue {
       /* webpackChunkName: "lib/bcdice/bcdice-loader" */
       './bcdice/bcdice-loader')
     ).default;
-    DiceBot.diceBotInfos = loader.listAvailableGameSystems()
+    const diceBotInfos: GameSystemInfo[] = loader.listAvailableGameSystems();
+    // カスタムダイス（超人ロック）を追加
+    diceBotInfos.push(DiceBot.getCustomGameSystemInfo(LockeDice as GameSystemClass, 'ja_jp'));
+    DiceBot.diceBotInfos = diceBotInfos
       .sort((a, b) => {
         if (a.sortKey < b.sortKey) return -1;
         if (a.sortKey > b.sortKey) return 1;

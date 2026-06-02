@@ -1,10 +1,13 @@
 import { Injectable } from '@angular/core';
+import { ChatMessageContext } from '@udonarium/chat-message';
+import { ChatTab } from '@udonarium/chat-tab';
 import { ObjectStore } from '@udonarium/core/synchronize-object/object-store';
 import { EventSystem, Network } from '@udonarium/core/system';
 import { StringUtil } from '@udonarium/core/system/util/string-util';
 import { DataElement } from '@udonarium/data-element';
 import { DataSummarySetting, SortOrder } from '@udonarium/data-summary-setting';
 import { GameCharacter } from '@udonarium/game-character';
+import { PeerCursor } from '@udonarium/peer-cursor';
 import { TabletopObject } from '@udonarium/tabletop-object';
 
 type ObjectIdentifier = string;
@@ -35,6 +38,13 @@ export class GameObjectInventoryService {
 
   static _newLineDataElement = createMockElement('/');
   get newLineDataElement(): DataElement { return GameObjectInventoryService._newLineDataElement; }
+
+  private timeOffset: number = Date.now();
+  private performanceOffset: number = performance.now();
+
+  private get myPeer(): PeerCursor { return PeerCursor.myCursor; }
+  private get chatTabs(): ChatTab[] { return ObjectStore.instance.getObjects(ChatTab); }
+  private get chatTabidentifier(): string { return 0 < this.chatTabs.length ? this.chatTabs[0].identifier : ''; }
 
   constructor() {
     this.initialize();
@@ -84,7 +94,60 @@ export class GameObjectInventoryService {
       })
       .on('SYNCHRONIZE_FILE_LIST', event => {
         if (event.isSendFromSelf) this.callInventoryUpdate();
+      })
+      .on('SET_INITIATIVE', event => {
+        this.setInitiativeForLocke();
+        this.callInventoryUpdate();
       });
+  }
+
+  // 超人ロック用：戦闘中のキャラクターにイニシアをランダムに割り振る
+  private setInitiativeForLocke() {
+    let resourceElements = Array<DataElement>();
+    this.tableInventory.tabletopObjects.forEach(function (value) {
+      let resourceElement = value.getElementByName('リソース');
+      if (resourceElement != null
+        && resourceElement.getElementsByName('イニシア').length == 1) {
+        if (resourceElement.getElementsByName('戦闘').length == 1
+          && Number(resourceElement.getFirstElementByName('戦闘').currentValue) > 0) {
+          resourceElements.push(resourceElement);
+        }
+        else {
+          resourceElement.getFirstElementByName('イニシア').value = '-';
+        }
+      }
+    });
+
+    let numbers = [...Array(resourceElements.length).keys()].map(i => ++i);
+    for (var i = numbers.length - 1; i > 0; i--) {
+      var r = Math.floor(Math.random() * (i + 1));
+      var tmp = numbers[i];
+      numbers[i] = numbers[r];
+      numbers[r] = tmp;
+    }
+
+    resourceElements.forEach(function (resourceElement, i) {
+      resourceElement.getFirstElementByName('イニシア').value = numbers[i];
+    });
+
+    let message: ChatMessageContext = {
+      identifier: '',
+      tabIdentifier: this.chatTabidentifier,
+      originFrom: '',
+      from: Network.peer.userId,
+      timestamp: this.getTime(),
+      imageIdentifier: '',
+      tag: 'system',
+      name: this.myPeer.name,
+      text: 'イニシアをふりました'
+    };
+
+    let chatTab = ObjectStore.instance.get<ChatTab>(this.chatTabidentifier);
+    if (chatTab) chatTab.addMessage(message);
+  }
+
+  private getTime(): number {
+    return Math.floor(this.timeOffset + (performance.now() - this.performanceOffset));
   }
 
   private containsInGameCharacter(element: DataElement): boolean {
@@ -236,6 +299,10 @@ class ObjectInventory {
 
       let aValue = this.convertToSortableValue(aElm);
       let bValue = this.convertToSortableValue(bElm);
+      // 超人ロックのイニシア用：未設定値 '-' は常に末尾へ送る（昇順/降順に依存しない）
+      if (aValue == bValue) return 0;
+      if (bValue == '-') return sortOrder;
+      if (aValue == '-') return sortOrder * -1;
       if (aValue < bValue) return sortOrder;
       if (aValue > bValue) return sortOrder * -1;
       return 0;

@@ -213,4 +213,9 @@ export class GameObjectInventoryComponent implements OnInit, OnDestroy {
   trackByGameObject(index: number, gameObject: GameObject) {
     return gameObject ? gameObject.identifier : index;
   }
+
+  rollInitiative() {
+    EventSystem.trigger('SET_INITIATIVE', {});
+    SoundEffect.play(PresetSound.diceRoll2);
+  }
 }

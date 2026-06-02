@@ -8,20 +8,22 @@ import { DiceSymbol, DiceType } from '@udonarium/dice-symbol';
 import { GameCharacter } from '@udonarium/game-character';
 import { GameTable } from '@udonarium/game-table';
 import { GameTableMask } from '@udonarium/game-table-mask';
+import { LockeCardType } from '@udonarium/locke-type';
 import { PresetSound, SoundEffect } from '@udonarium/sound-effect';
 import { TableSelecter } from '@udonarium/table-selecter';
 import { Terrain } from '@udonarium/terrain';
 import { TextNote } from '@udonarium/text-note';
 
-import { ContextMenuAction } from './context-menu.service';
+import { ContextMenuAction, ContextMenuSeparator } from './context-menu.service';
 import { PointerCoordinate } from './pointer-device.service';
+import { TabletopService } from './tabletop.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TabletopActionService {
 
-  constructor() { }
+  constructor(private tabletop: TabletopService) { }
 
   createGameCharacter(position: PointerCoordinate): GameCharacter {
     let character = GameCharacter.create('新しいキャラクター', 1, '');
@@ -120,6 +122,125 @@ export class TabletopActionService {
     return cardStack;
   }
 
+  createCombat(position: PointerCoordinate): CardStack {
+    let cardStack = CardStack.create('コンバットカード');
+    let image_url_path = 'https://raw.githubusercontent.com/kurpg/kurpg-locke/gh-pages/assets/images/';
+    cardStack.location.x = position.x - 25;
+    cardStack.location.y = position.y - 25;
+    cardStack.posZ = position.z;
+
+    let back: string = image_url_path + 'combat_card/combat_back.png';
+    if (!ImageStorage.instance.get(back)) {
+      ImageStorage.instance.add(back);
+    }
+
+    let combats1: string[] = ['a_4_12', 'a_4_14', 'a_4_16', 'a_4_18', 'a_4_20', 'a_5_25', 'a_5_30', 'a_5_35', 'a_6_40', 'a_6_50', 'a_7_100', 'l_5', 'l_6', 'l_7', 'i_1', 'i_2', 'i_3', 'i_4', 'i_5', 'i_6', 'i_7', 'w'];
+    let combats2: string[] = ['a_3_7', 'a_3_8', 'a_3_9', 'a_3_10', 'b_5', 'b_6', 't_1', 't_2', 't_3', 't_4', 't_5', 't_6', 't_7'];
+    let combats3: string[] = ['a_2_4', 'a_2_5', 'a_2_6', 'b_3', 'b_4'];
+    let combats4: string[] = ['a_1_1', 'a_1_2', 'a_1_3', 'b_1', 'b_2'];
+    let combats5: string[] = ['telepath'];
+
+    // 一枚しかないやつを作る
+    for (let combat1 of combats1) {
+      let url: string = image_url_path + 'combat_card/combat_' + combat1 + '.png';
+      if (!ImageStorage.instance.get(url)) {
+        ImageStorage.instance.add(url);
+      }
+      let card = Card.create('コンバットカード', url, back);
+      cardStack.putOnBottom(card);
+    }
+
+    // 二枚のやつを作る
+    for (let combat2 of combats2) {
+      for (let i = 1; i <= 2; i++) {
+        let url: string = image_url_path + 'combat_card/combat_' + combat2 + '.png';
+        if (!ImageStorage.instance.get(url)) {
+          ImageStorage.instance.add(url);
+        }
+        let card = Card.create('コンバットカード', url, back);
+        cardStack.putOnBottom(card);
+      }
+    }
+
+    // 三枚のやつを作る
+    for (let combat3 of combats3) {
+      for (let i = 1; i <= 3; i++) {
+        let url: string = image_url_path + 'combat_card/combat_' + combat3 + '.png';
+        if (!ImageStorage.instance.get(url)) {
+          ImageStorage.instance.add(url);
+        }
+        let card = Card.create('コンバットカード', url, back);
+        cardStack.putOnBottom(card);
+      }
+    }
+
+    // //四枚のやつを作る
+    for (let combat4 of combats4) {
+      for (let i = 1; i <= 4; i++) {
+        let url: string = image_url_path + 'combat_card/combat_' + combat4 + '.png';
+        if (!ImageStorage.instance.get(url)) {
+          ImageStorage.instance.add(url);
+        }
+        let card = Card.create('コンバットカード', url, back);
+        cardStack.putOnBottom(card);
+      }
+    }
+
+    // 五枚のやつを作る
+    for (let combat5 of combats5) {
+      for (let i = 1; i <= 5; i++) {
+        let url: string = image_url_path + 'combat_card/combat_' + combat5 + '.png';
+        if (!ImageStorage.instance.get(url)) {
+          ImageStorage.instance.add(url);
+        }
+        let card = Card.create('コンバットカード', url, back);
+        cardStack.putOnBottom(card);
+      }
+    }
+
+    cardStack.setLockeCardType(LockeCardType.COMBAT);
+
+    return cardStack;
+  }
+
+  // 超人ロック用：指定種別のカードを集めて山札を作る
+  gatherCards(position: PointerCoordinate, locke_card_type: LockeCardType, name: string): CardStack {
+    let cards: Card[] = this.tabletop.cardStacks
+      .reduce((all, stack) => all.concat(stack.cards), [] as Card[])
+      .concat(this.tabletop.cards)
+      .filter(card => card.locke_card_type == locke_card_type);
+    if (!cards.length) return;
+
+    let cardStack: CardStack = this.createStackFromCards(position, cards, name);
+    if (!cardStack) return;
+    cardStack.cards.forEach(card => card.setLockeCardType(LockeCardType.COMBAT));
+    this.clean();
+    return cardStack;
+  }
+
+  createStackFromCards(position: PointerCoordinate, cards: Card[], name: string): CardStack {
+    if (!cards.length) return null;
+    let cardStack = CardStack.create(name);
+    cardStack.location.x = position.x - 25;
+    cardStack.location.y = position.y - 25;
+    cardStack.posZ = position.z;
+
+    cards.forEach(card => cardStack.putOnBottom(card));
+    cardStack.faceDownAll();
+    cardStack.shuffle();
+    this.clean();
+    return cardStack;
+  }
+
+  // 空になった山札を削除する
+  clean() {
+    for (let stack of this.tabletop.cardStacks) {
+      if (!stack.cards.length) {
+        stack.destroy();
+      }
+    }
+  }
+
   makeDefaultTable() {
     let gameTable = new GameTable('gameTable');
     let testBgFile: ImageFile = null;
@@ -136,6 +257,9 @@ export class TabletopActionService {
   }
 
   makeDefaultTabletopObjects() {
+    // 超人ロック用：起動時のテストオブジェクト生成を無効化（差分を小さくするためコメントアウトせず早期return）
+    return;
+
     let testCharacter: GameCharacter = null;
     let testFile: ImageFile = null;
     let fileContext: ImageContext = null;
@@ -200,7 +324,49 @@ export class TabletopActionService {
       this.getCreateTextNoteMenu(position),
       this.getCreateTrumpMenu(position),
       this.getCreateDiceSymbolMenu(position),
+      ContextMenuSeparator,
+      this.getGatherCombatMenu(position),
+      ContextMenuSeparator,
+      this.getCreateCombatMenu(position),
+      this.getCleanMenu(),
+      ContextMenuSeparator,
+      this.setInitiative(),
     ];
+  }
+
+  private getCreateCombatMenu(position: PointerCoordinate): ContextMenuAction {
+    return {
+      name: 'コンバットカードの山札を作成', action: () => {
+        this.createCombat(position);
+        SoundEffect.play(PresetSound.cardPut);
+      }
+    }
+  }
+
+  private getGatherCombatMenu(position: PointerCoordinate): ContextMenuAction {
+    return {
+      name: 'コンバットカードを集める', action: () => {
+        this.gatherCards(position, LockeCardType.COMBAT, 'コンバットカード');
+        this.clean();
+      }
+    }
+  }
+
+  private setInitiative(): ContextMenuAction {
+    return {
+      name: 'イニシアをセットする', action: () => {
+        EventSystem.trigger('SET_INITIATIVE', {});
+        SoundEffect.play(PresetSound.diceRoll2);
+      }
+    }
+  }
+
+  private getCleanMenu(): ContextMenuAction {
+    return {
+      name: 'お掃除', action: () => {
+        this.clean();
+      }
+    }
   }
 
   private getCreateCharacterMenu(position: PointerCoordinate): ContextMenuAction {
