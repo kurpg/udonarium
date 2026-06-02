@@ -124,7 +124,7 @@ export class TabletopActionService {
 
   createCombat(position: PointerCoordinate): CardStack {
     let cardStack = CardStack.create('コンバットカード');
-    let image_url_path = 'https://raw.githubusercontent.com/kurpg/kurpg-locke/gh-pages/assets/images/';
+    let image_url_path = 'https://kurpg.github.io/udonarium-locke-assets/';
     cardStack.location.x = position.x - 25;
     cardStack.location.y = position.y - 25;
     cardStack.posZ = position.z;
