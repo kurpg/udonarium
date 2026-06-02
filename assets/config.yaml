@@ -1,0 +1,7 @@
+backend:
+  mode: skyway2023
+  url: 'https://udonarium-backend.kamiusui.workers.dev'
+webrtc:
+  key: aaaaaaaa-bbbb-ccccc-dddd-eeeeeeeeeeee
+app: null
+dice: null
