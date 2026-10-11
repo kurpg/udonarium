@@ -12,6 +12,7 @@ import { PromiseQueue } from './core/system/util/promise-queue';
 import { StringUtil } from './core/system/util/string-util';
 
 import LockeDice from './LockeDice';
+import Locke40thDice from './Locke40thDice';
 // 追加カスタムダイスは下記追記
 // import *** from './***';
 
@@ -44,6 +45,7 @@ export class DiceBot extends GameObject {
   // 追加カスタムダイスのクラスを gameType から解決する
   static loadCustomGameSystem(gameType: string): any {
     if (gameType == 'Locke') { return LockeDice; }
+    if (gameType == 'Locke40th') { return Locke40thDice; }
     // 追加カスタムダイスは下記追記
     // if( gameType == '***') return ***;
     return null;
@@ -173,6 +175,7 @@ function initializeDiceBotQueue(): PromiseQueue {
     const diceBotInfos: GameSystemInfo[] = loader.listAvailableGameSystems();
     // カスタムダイス（超人ロック）を追加
     diceBotInfos.push(DiceBot.getCustomGameSystemInfo(LockeDice as GameSystemClass, 'ja_jp'));
+    diceBotInfos.push(DiceBot.getCustomGameSystemInfo(Locke40thDice as GameSystemClass, 'ja_jp'));
     DiceBot.diceBotInfos = diceBotInfos
       .sort((a, b) => {
         if (a.sortKey < b.sortKey) return -1;
